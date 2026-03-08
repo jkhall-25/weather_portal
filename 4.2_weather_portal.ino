@@ -39,9 +39,9 @@ void setup() {
 
   // The SPI initialization part is commented out
   // default baud is 115200
-  SPI.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
-  SPI.begin ();
-  status = connect_wifi();
+  // SPI.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
+  // SPI.begin ();
+  //connect_wifi();
 
   // WiFi.init();
   // if (!WiFi.is_initialized()){
@@ -92,7 +92,7 @@ void PrintData(BLOCK block)
   EPD_Init_Fast(Fast_Seconds_1_5s); // Quickly initialize the EPD screen, setting it to 1.5 second fast mode
 
   Part_Text_Display(My_Text, block.startX, block.startY, fontSize, BLACK, block.endX, block.endY);
-  bool weather = fetch_data(client);
+  //bool weather = fetch_data(client);
 
   //display Block 1
 
