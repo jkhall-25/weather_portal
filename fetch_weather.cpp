@@ -16,6 +16,7 @@ const int DATA_LEN = 512;
 JsonDocument fetch_data(WiFiClient& client);
 bool parse_data(JsonDocument json);
 void connect_wifi();
+unsigned char* fetch_icon(WiFiClient& client, String code);
 
 String bytes;
 JsonDocument data;
@@ -66,13 +67,9 @@ JsonDocument fetch_data(WiFiClient& client)
 
   deserializeJson(data, bytes);
 
-  parse_data(data);
+  //parse_data(data);
 
   return data;
-}
-
-unsigned char* fetch_icon(String code){
-
 }
 
 bool parse_data(JsonDocument json)

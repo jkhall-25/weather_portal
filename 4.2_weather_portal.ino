@@ -11,6 +11,7 @@
 #include <U8g2_for_Adafruit_GFX.h>
 #include "epaper_fonts.h"
 #include "fetch_weather.h"
+#include "icons.h"
 
 unsigned long DAY = 80000000;
 unsigned long HOUR = 3000000;
@@ -119,6 +120,7 @@ void PrintData(BLOCK block)
   String display_text = String(String("Current Temperature is: ")+ dtostrf(temp, 2, 0, stemp));
 
   Part_Text_Display(display_text.c_str(), block.startX, block.startY, fontSize, BLACK, block.endX, block.endY);
+  display_current(0, 150, 128, 128);
   //bool weather = fetch_data(client);
 
   //display Block 1
@@ -130,7 +132,7 @@ void PrintData(BLOCK block)
 
 void display_current(int x, int y, int w, int h){
 
-  EPD_ShowPicture(0, 0, 134, 150, , BLACK)
+  EPD_ShowPicture(x, y, w, h, i_01d, WHITE);
 
 }
 
