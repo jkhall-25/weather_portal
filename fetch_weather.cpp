@@ -41,7 +41,7 @@ JsonDocument fetch_data(WiFiClient& client)
   Serial.println("Fetching weather data...");
 
   String uri = "/data/3.0/onecall?lat="+LAT+"&lon="+LON+"&appid="+apikey+"&units=imperial&exclude=minutely";
-  //api.openweathermap.org/data/3.0/onecall?lat=42.29519506567491&lon=-71.11523920701491&appid=c0674e8af5cb95fdc247aab4eff3c996&units=imperial&exclude=minutely
+  //api.openweathermap.org/data/3.0/onecall?lat=42.29519506567491&lon=-71.11523920701491&appid=[APIKEY]&units=imperial&exclude=minutely
   client.connect(server, 80);
   Serial.println(server);
   if (!client.connected()){
