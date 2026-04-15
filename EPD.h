@@ -3,7 +3,7 @@
 
 #include "EPD_SPI.h"
 
-//液晶分辨率
+//width and height of the 4.2 model
 #define EPD_W 400
 #define EPD_H 300
 

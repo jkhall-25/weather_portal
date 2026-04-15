@@ -1,6 +1,7 @@
 #include <Arduino.h>        // Include the core library for Arduino platform development
 #include "EPD.h"            // Include the EPD library to control the E-Paper Display
 #include "EPD_GUI.h"        // Include the EPD_GUI library which provides GUI functionalities
+#include "esp_sleep.h"
 #include <ArduinoJson.h>    // https://github.com/bblanchon/ArduinoJson
 #include <WiFi.h>           //built in
 #include "time.h"           //built in
@@ -10,6 +11,13 @@
 #include <U8g2_for_Adafruit_GFX.h>
 #include "epaper_fonts.h"
 #include "fetch_weather.h"
+
+unsigned long DAY = 80000000;
+unsigned long HOUR = 3000000;
+// unsigned long DAY = 80000;
+// unsigned long HOUR = 3000;
+unsigned long lastFullRefresh = 0; // vairable to save the last executed time for code block 1
+unsigned long lastAPICall = 0; // vairable to save the last executed time for code block 2
 
 int status = WL_IDLE_STATUS;
 
@@ -34,6 +42,8 @@ void setup() {
   // Configure pin 7 as output mode and set it to high level to activate the screen power
   pinMode(7, OUTPUT);            // Set pin 7 as output mode
   digitalWrite(7, HIGH);         // Set pin 7 to high level, activating the screen power
+  Serial.begin(115200);
+  Serial.println("Booting up...");
 
   EPD_GPIOInit();                // Initialize the GPIO pin configuration for the EPD e-ink screen
 
@@ -41,42 +51,49 @@ void setup() {
   // default baud is 115200
   // SPI.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
   // SPI.begin ();
-  //connect_wifi();
+  connect_wifi();
 
-  // WiFi.init();
-  // if (!WiFi.is_initialized()){
-  //   SPI.println("Could not connect to WiFi.")
-  // }
-  // if (!Wifi.is_connected()){
-  //   WiFi.register_sta(
-  //     "home",
-  //     {.ssid = ssid,
-  //     .password = password,
-  //     .num_connect_retries = CONFIG_ESP_MAXIMUM_RETRY,
-  //     .auto_connect = true,
-  //     .on_got_ip = [&](ip_event_got_ip_t *eventdata) 
-  //     {
-  //       logger.info("Home network - got IP: {}.{}.{}.{}", IP2STR(&eventdata->ip_info.ip));
-  //     },
-  //     .log_level = espp::Logger::Verbosity::INFO},
-  //     set_active=true;
-  //     );
-  // }
-    // Now manually initiate the connection
-  
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("Connected to WiFi.");
+
+  clear_all();
 
   PrintData(fullscreen);
   
   EPD_Sleep();                // Set the screen to sleep mode to save power
 
-  delay(5000);                // Wait for 5000 milliseconds (5 seconds), allowing the screen to stay in sleep mode for some time
-
-  clear_all();               // Call the clear_all function to clear the screen content
 }
 
 void loop() {
   // Main loop function, currently does not perform any actions
   // Code that needs to be repeatedly executed can be added here
+
+  unsigned long currentMillis = millis();
+
+  //if it's been longer than a day since the last full screen refresh, refresh the screen
+  if (currentMillis - lastFullRefresh >= DAY) {
+    lastFullRefresh = currentMillis; // save the last executed time
+    Serial.println("Full Refresh");
+    EPD_Init();
+    clear_all();
+
+    lastAPICall = currentMillis;
+    PrintData(fullscreen);
+    EPD_Sleep();
+  }
+
+  if (currentMillis - lastAPICall >= HOUR) {
+    lastAPICall = currentMillis; // save the last executed time
+    Serial.println("updating data");
+    EPD_Init();
+    PrintData(fullscreen);
+    EPD_Sleep();
+  }
+
 }
 
 void PrintData(BLOCK block)
@@ -84,14 +101,24 @@ void PrintData(BLOCK block)
   const char *My_Text = "The quick brown fox jumped over the lazy dog";
 
   /*First refresh the screen*/
-  EPD_Clear();                   // Clear the screen content, restoring it to its default state
+  //EPD_Clear();                   // Clear the screen content, restoring it to its default state
   Paint_NewImage(Image_BW, EPD_W, EPD_H, 0, WHITE); // Create a new image buffer, size EPD_W x EPD_H, background color white
   EPD_Full(WHITE);              // Fill the entire canvas with white
   EPD_Display_Part(0, 0, EPD_W, EPD_H, Image_BW); // Display the image stored in the Image_BW array
   //EPD_Init(); // initalize slowly
   EPD_Init_Fast(Fast_Seconds_1_5s); // Quickly initialize the EPD screen, setting it to 1.5 second fast mode
 
-  Part_Text_Display(My_Text, block.startX, block.startY, fontSize, BLACK, block.endX, block.endY);
+  JsonDocument data = fetch_data(client);
+
+  JsonVariant current = data["current"];
+  float temp = current["temp"];
+  char stemp[10];
+
+  //Serial.println(current);
+
+  String display_text = String(String("Current Temperature is: ")+ dtostrf(temp, 2, 0, stemp));
+
+  Part_Text_Display(display_text.c_str(), block.startX, block.startY, fontSize, BLACK, block.endX, block.endY);
   //bool weather = fetch_data(client);
 
   //display Block 1
@@ -101,6 +128,11 @@ void PrintData(BLOCK block)
   EPD_Display_Fast(Image_BW); // Quickly display the image stored in the Image_BW array
 }
 
+void display_current(int x, int y, int w, int h){
+
+  EPD_ShowPicture(0, 0, 134, 150, , BLACK)
+
+}
 
 void clear_all() {
   // Function to clear the screen content
