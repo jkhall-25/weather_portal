@@ -113,7 +113,9 @@ void PrintData(BLOCK block)
 
   JsonVariant current = data["current"];
   float temp = current["temp"];
-  String icon = current["icon"];
+  JsonVariant weather = current["weather"];
+  JsonVariant today = weather ["0"];
+  String icon = today["icon"];
   char stemp[10];
 
   //Serial.println(current);
