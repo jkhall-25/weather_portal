@@ -113,6 +113,7 @@ void PrintData(BLOCK block)
 
   JsonVariant current = data["current"];
   float temp = current["temp"];
+  String icon = current["icon"];
   char stemp[10];
 
   //Serial.println(current);
@@ -120,7 +121,7 @@ void PrintData(BLOCK block)
   String display_text = String(String("Current Temperature is: ")+ dtostrf(temp, 2, 0, stemp));
 
   Part_Text_Display(display_text.c_str(), block.startX, block.startY, fontSize, BLACK, block.endX, block.endY);
-  display_current(0, 150, 128, 128);
+  display_icon(0, 150, 128, 128, icon);
   //bool weather = fetch_data(client);
 
   //display Block 1
@@ -130,10 +131,37 @@ void PrintData(BLOCK block)
   EPD_Display_Fast(Image_BW); // Quickly display the image stored in the Image_BW array
 }
 
-void display_current(int x, int y, int w, int h){
+void display_icon(int x, int y, int w, int h, String code){
 
-  EPD_ShowPicture(x, y, w, h, i_01d, WHITE);
+  const unsigned char** icon_array;
+  const unsigned char* icon;
 
+  const unsigned char* day_icons[15] = {i_01d, i_02d, i_03d, 0, i_04d, 0, 0, 0, 0, i_09d, i_10d, i_11d, 0, i_13d, i_50d};
+  const unsigned char* night_icons[15] = {i_01n, i_02n, i_03n, 0, i_04d, 0, 0, 0, 0, i_09d, i_10d, i_11d, 0, i_13d, i_50d};
+
+  char time = '0';
+
+  if (code.indexOf('d') >= 0){icon_array = day_icons;}
+  else if (code.indexOf('n') >= 0){icon_array = night_icons;}
+  else{
+    EPD_ShowPicture(x, y, w, h, i_unknown, WHITE);
+    return;
+  }
+  
+  //if code contains a d or an n:
+
+  code[-1] = '\0';
+  int index = std::stoi(code.c_str());
+  index -= 1;
+  if (index < sizeof(icon_array) && index >= 0){icon = icon_array[index];}
+  else if (index == 50){icon = icon_array[13];}
+  if (icon == 0){
+    EPD_ShowPicture(x, y, w, h, i_unknown, WHITE);
+    return;
+  }
+
+  EPD_ShowPicture(x, y, w, h, icon, WHITE);
+  return;
 }
 
 void clear_all() {
