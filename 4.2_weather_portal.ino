@@ -31,6 +31,8 @@ struct BLOCK {
   int startX, startY, endX, endY;
 };
 BLOCK fullscreen = {0, 0, 400, 300};
+BLOCK status_bar = {0, 0, 400, 12};
+BLOCK current_block = {0, 14, 134, 164};
 
 struct W_DATA weather_data;
 
@@ -107,22 +109,44 @@ void PrintData(BLOCK block)
 
   fetch_data(client);
 
-  String display_text = String(String("Current Temperature is: ") + weather_data.temp);
+  display_status(status_bar);
+  display_current(current_block);
 
-  Part_Text_Display(display_text.c_str(), block.startX, block.startY, fontSize, BLACK, block.endX, block.endY);
-  if (weather_data.icon_now != NULL) {
-    display_icon(0, 150, 128, 128, weather_data.icon_now);
-  }
+  //String display_text = String("Current Temperature is: ") + weather_data.temp;
 
+  //Part_Text_Display(display_text.c_str(), block.startX, block.startY, fontSize, BLACK, block.endX, block.endY);
+  //display_icon(0, 150, 0);
 
-  //display Block 1
-
-  //EPD_ShowPicture(0, 0, 312, 152, gImage_1, WHITE); // Display image gImage_1, starting coordinates (0, 0), width 312, height 152, background color white
-  // EPD_ShowPicture(0, 0, 352, 104, gImage_tiaoma_1, WHITE);
   EPD_Display_Fast(Image_BW); // Quickly display the image stored in the Image_BW array
 }
 
-void display_icon(int x, int y, int w, int h, int code) {
+void display_status(BLOCK block) {
+  int fontSize = 12;
+  String status_text = String("Last updated: ") + weather_data.time;
+  Part_Text_Display(status_text.c_str(), block.startX, block.startY, fontSize, BLACK, block.endX, block.endY);
+}
+
+void display_current(BLOCK block) {
+  int startX = block.startX;
+  int startY = block.startY;
+  int endX = block.endX;
+  int endY = block.endY;
+  int fontSize = 32;
+  Part_Text_Display("Now:", startX, startY, fontSize, BLACK, endX, (startY+fontSize));
+  // startY += fontSize; // move down past current text
+  fontSize = 48;
+  
+  char current_temp[3];
+  itoa(weather_data.temp, current_temp, 10);
+  //= weather_data.temp;
+  Serial.println(current_temp);
+  Part_Text_Display(current_temp, startX, (startY+32), fontSize, BLACK, endX, endY);
+  //String forecast_today = weather_data.high + "/" + weather_data.low;
+  //Part_Text_Display(forecast_today.c_str(), block.endX-50, block.startY, font, BLACK, block.endX, block.endY);
+  display_icon((startX+75), startY, weather_data.icon_now);
+}
+
+void display_icon(int x, int y, int code) {
 
   const unsigned char* icon;
 
@@ -150,40 +174,8 @@ void display_icon(int x, int y, int w, int h, int code) {
     icon = i_unknown;
   }
 
-  EPD_ShowPicture(x, y, w, h, icon, WHITE);
+  EPD_ShowPicture(x, y, 88, 88, icon, WHITE);
 
-  // const unsigned char** icon_array = NULL;
-  // const unsigned char* icon;
-
-  // const unsigned char* day_icons[15] = {i_01d, i_02d, i_03d, i_04d, 0, 0, 0, 0, i_09d, i_10d, i_11d, 0, i_13d, i_50d};
-  // const unsigned char* night_icons[15] = {i_01n, i_02n, i_03n, i_04d, 0, 0, 0, 0, i_09d, i_10d, i_11d, 0, i_13d, i_50d};
-
-  // char time = '0';
-
-  // if (code.indexOf('d') >= 0){icon_array = day_icons;}
-  // else if (code.indexOf('n') >= 0){icon_array = night_icons;}
-
-  // Serial.println(code);
-  
-  // //if code contains a d or an n:
-
-  // if (icon_array != NULL) {
-  //   code[-1] = '\0';
-  //   int index = std::stoi(code.c_str());
-  //   index -= 1;
-  //   Serial.println(index);
-  //   if (index < sizeof(icon_array) && index >= 0){icon = icon_array[index];}
-  //   else if (index == 50){icon = icon_array[13];}
-  //   if (icon == 0){
-  //     EPD_ShowPicture(x, y, w, h, i_unknown, WHITE);
-  //   }
-  //   else {
-  //   EPD_ShowPicture(x, y, w, h, icon, WHITE);
-  //   }
-  // }
-  // else{
-  //   EPD_ShowPicture(x, y, w, h, i_unknown, WHITE);
-  // }
 }
 
 void clear_all() {

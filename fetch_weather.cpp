@@ -76,6 +76,8 @@ bool parse_data(JsonDocument payload) {
   JsonVariant data = payload.as<JsonVariant>();
   JsonVariant minutely = data["minutely_15"];
 
+  weather_data.time = String(minutely["time"][0]).substring(11);
+
   float temp = minutely["temperature_2m"][0];
   weather_data.temp = int(round(temp));
 

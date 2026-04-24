@@ -2,6 +2,7 @@
 #define fetch_weather_h_
 
 struct W_DATA {
+  String time;
   int temp;
   int feelsLike;
   int high;
