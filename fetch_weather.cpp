@@ -18,7 +18,12 @@ unsigned char* fetch_icon(WiFiClient& client, String code);
 
 char bytes[DATA_LEN];
 
-extern struct W_DATA weather_data;
+extern struct W_DATA today;
+extern struct W_DATA tomorrow;
+extern struct W_DATA hr3;
+extern struct W_DATA hr6;
+extern struct W_DATA hr9;
+extern struct W_DATA hr12;
 
 
 void fetch_data(WiFiClient& client)
@@ -26,20 +31,13 @@ void fetch_data(WiFiClient& client)
   Serial.begin(115200);
   Serial.println("Fetching weather data...");
 
-  //String uri = "/data/3.0/onecall?lat="+LAT+"&lon="+LON+"&appid="+apikey+"&units=imperial&exclude=minutely";
-//   String uri = "/v1/forecast?latitude=42.3584&longitude=-71.0598&daily=temperature_2m_max,temperature_2m_min,\
-// apparent_temperature_max,apparent_temperature_min,precipitation_hours&hourly=temperature_2m,\
-// apparent_temperature,precipitation_probability,precipitation,rain,snowfall,showers,weather_code,\
-// is_day&minutely_15=is_day,rain,snowfall,snowfall_height,temperature_2m,relative_humidity_2m,\
-// apparent_temperature,precipitation,weather_code&timezone=America%2FNew_York\
-// &forecast_days=3&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch\
-// &forecast_hours=12&temporal_resolution=hourly_3&forecast_minutely_15=4";
- String uri = "/v1/forecast?latitude=42.3584&longitude=-71.0598&daily=temperature_2m_max,temperature_2m_min,\
-apparent_temperature_max,apparent_temperature_min,weather_code,precipitation_probability_max,precipitation_hours\
-&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,snowfall,showers,\
-weather_code,is_day&minutely_15=is_day,rain,snowfall,snowfall_height,temperature_2m,relative_humidity_2m,\
-apparent_temperature,precipitation,weather_code&timezone=America%2FNew_York&forecast_days=3&wind_speed_unit=mph\
-&temperature_unit=fahrenheit&precipitation_unit=inch&forecast_hours=12&temporal_resolution=hourly_3&forecast_minutely_15=4";
+String uri = "/v1/forecast?latitude=42.3584&longitude=-71.0598&daily=temperature_2m_max,temperature_2m_min,weather_code,\
+precipitation_probability_max,precipitation_hours,wind_speed_10m_max,apparent_temperature_max,apparent_temperature_min,\
+temperature_2m_mean,apparent_temperature_mean,uv_index_max&hourly=temperature_2m,apparent_temperature,precipitation_probability,\
+precipitation,rain,snowfall,showers,weather_code,is_day&minutely_15=is_day,rain,snowfall,snowfall_height,temperature_2m,\
+relative_humidity_2m,apparent_temperature,precipitation,weather_code&timezone=America%2FNew_York&past_days=0&forecast_days=3\
+&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch&forecast_minutely_15=4&forecast_hours=15&temporal_resolution=hourly_3";
+
   client.connect(server, 80);
   Serial.println(server);
   if (!client.connected()){
@@ -62,7 +60,6 @@ apparent_temperature,precipitation,weather_code&timezone=America%2FNew_York&fore
 
   JsonDocument data;
   DeserializationError error = deserializeJson(data, bytes);
-  //Serial.println(bytes);
 
   if (error) {
     Serial.print("deserialization failed: ");
@@ -75,42 +72,84 @@ bool parse_data(JsonDocument payload) {
 
   JsonVariant data = payload.as<JsonVariant>();
   JsonVariant minutely = data["minutely_15"];
+  JsonVariant daily = data["daily"];
+  JsonVariant hourly = data["hourly"];
 
-  weather_data.time = String(minutely["time"][0]).substring(11);
+  today.time = String(minutely["time"][0]).substring(11);
 
   float temp = minutely["temperature_2m"][0];
-  weather_data.temp = int(round(temp));
-
+  today.temp = int(round(temp));
   float feelsLike = minutely["apparent_temperature"][0];
-  weather_data.feelsLike = int(round(feelsLike));
+  today.feelsLike = int(round(feelsLike));
+  today.icon = int(minutely["weather_code"][0]);
+  today.is_day = int(minutely["is_day"][0]);
+  float high = daily["temperature_2m_max"][0];
+  today.high = int(round(high));
+  float low = daily["temperature_2m_min"][0];
+  today.low = int(round(low));
+  float f_high = daily["apparent_temperature_max"][0];
+  today.feel_high = int(round(f_high));
+  float f_low = daily["apparent_temperature_min"][0];
+  today.feel_low = int(round(f_low));
+  today.chance_precip = daily["precipitation_probability_max"][0];
+  today.hours_precip = daily["precipitation_hours"][0];
+  today.UV = daily["uv_index_max"][0];
 
-  weather_data.icon_now = int(minutely["weather_code"][0]);
+  hr3.time = String(hourly["time"][0]).substring(11) + "-" + String(hourly["time"][1]).substring(11);
+  temp = hourly["temperature_2m"][0];
+  hr3.temp = int(round(temp));
+  feelsLike = hourly["apparent_temperature"][0];
+  hr3.feelsLike = int(round(feelsLike));
+  hr3.chance_precip = hourly["precipitation_probability"][0];
+  hr3.icon = int(hourly["weather_code"][0]);
+  hr3.is_day = int(hourly["is_day"][0]);
 
-  weather_data.is_day = int(minutely["is_day"][0]);
+  hr6.time = String(hourly["time"][1]).substring(11) + "-" + String(hourly["time"][2]).substring(11);
+  temp = hourly["temperature_2m"][1];
+  hr6.temp = int(round(temp));
+  feelsLike = hourly["apparent_temperature"][1];
+  hr6.feelsLike = int(round(feelsLike));
+  hr6.chance_precip = hourly["precipitation_probability"][1];
+  hr6.icon = int(hourly["weather_code"][1]);
+  hr6.is_day = int(hourly["is_day"][1]);
 
-  float high = data["daily"]["temperature_2m_max"][0];
-  weather_data.high = int(round(high));
+  hr9.time = String(hourly["time"][2]).substring(11) + "-" + String(hourly["time"][3]).substring(11);
+  temp = hourly["temperature_2m"][2];
+  hr9.temp = int(round(temp));
+  feelsLike = hourly["apparent_temperature"][2];
+  hr9.feelsLike = int(round(feelsLike));
+  hr9.chance_precip = hourly["precipitation_probability"][2];
+  hr9.icon = int(hourly["weather_code"][2]);
+  hr9.is_day = int(hourly["is_day"][2]);
 
-  float low = data["daily"]["temperature_2m_min"][0];
-  weather_data.low = int(round(low));
+  hr12.time = String(hourly["time"][3]).substring(11) + "-" + String(hourly["time"][4]).substring(11);
+  temp = hourly["temperature_2m"][3];
+  hr12.temp = int(round(temp));
+  feelsLike = hourly["apparent_temperature"][3];
+  hr12.feelsLike = int(round(feelsLike));
+  hr12.chance_precip = hourly["precipitation_probability"][3];
+  hr12.icon = int(hourly["weather_code"][3]);
+  hr12.is_day = int(hourly["is_day"][3]);
 
-  weather_data.chance_precip = data["daily"]["precipitation_probability_max"][0];
-
-  // int high;
-  // int low;
-  // int humidity;
-  // int temp_morn;
-  // int temp_day;
-  // int temp_eve;
-  // int temp_night;
-  // int chance_precip;
-  // int icon_now;
-  // int icon_today;
-  // int is_day;
+  temp = daily["temperature_2m_mean"][1];
+  tomorrow.temp = int(round(temp));
+  feelsLike = daily["apparent_temperature_mean"][1];
+  tomorrow.feelsLike = int(round(feelsLike));
+  tomorrow.icon = int(daily["weather_code"][1]);
+  tomorrow.is_day = int(daily["is_day"][1]);
+  high = daily["temperature_2m_max"][1];
+  tomorrow.high = int(round(high));
+  low = daily["temperature_2m_min"][1];
+  tomorrow.low = int(round(low));
+  f_high = daily["apparent_temperature_max"][1];
+  tomorrow.feel_high = int(round(f_high));
+  f_low = daily["apparent_temperature_min"][1];
+  tomorrow.feel_low = int(round(f_low));
+  tomorrow.chance_precip = daily["precipitation_probability_max"][1];
+  tomorrow.hours_precip = daily["precipitation_hours"][1];
+  tomorrow.UV = daily["uv_index_max"][1];
   
   return true;
-
-  
 }
 
 void connect_wifi(){

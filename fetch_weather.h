@@ -7,15 +7,13 @@ struct W_DATA {
   int feelsLike;
   int high;
   int low;
-  int humidity;
-  int temp_morn;
-  int temp_day;
-  int temp_eve;
-  int temp_night;
+  int feel_high;
+  int feel_low;
   int chance_precip;
-  int icon_now;
-  int icon_today;
+  int hours_precip;
+  int icon;
   int is_day;
+  float UV;
 };
 
 void fetch_data(WiFiClient& client);

@@ -25,6 +25,8 @@ uint8_t Image_BW[15000];    // Declare an array of 15000 bytes to store black an
 
 int fontSize = 24; // Default font size
 
+int icon_width = 72;
+
 WiFiClient client;
 
 struct BLOCK {
@@ -32,9 +34,37 @@ struct BLOCK {
 };
 BLOCK fullscreen = {0, 0, 400, 300};
 BLOCK status_bar = {0, 0, 400, 12};
-BLOCK current_block = {0, 14, 134, 164};
+BLOCK current_block = {0, 14, 200, 150};
+BLOCK tomorrow_block = {200, 14, 400, 150};
+BLOCK block_3h = {0, 150, 100, 300};
+BLOCK block_6h = {100, 150, 200, 300};
+BLOCK block_9h = {200, 150, 300, 300};
+BLOCK block_12h = {300, 150, 400, 300};
 
-struct W_DATA weather_data;
+      // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+      // X ____status______400 x 14____________________X
+      // X                     X                       X
+      // X        today        X        tomorrow       X
+      // X      200 x 150      X       200 x 150       X
+      // X                     X                       X
+      // X                     X                       X
+      // X                     X                       X
+      // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+      // X    3h    X    6h    X    9h     X    12h    X
+      // X          X          X           X           X
+      // X   100    X   100    X    100    X   100     X
+      // X    x     X    x     X     x     X    x      X
+      // X   150    X   150    X    150    X   150     X
+      // X          X          X           X           X
+      // X          X          X           X           X
+      // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+struct W_DATA today;
+struct W_DATA tomorrow;
+struct W_DATA hr3;
+struct W_DATA hr6;
+struct W_DATA hr9;
+struct W_DATA hr12;
 
 void setup() {
   // Initialization settings, executed only once when the program starts
@@ -68,8 +98,6 @@ void setup() {
 }
 
 void loop() {
-  // Main loop function, currently does not perform any actions
-  // Code that needs to be repeatedly executed can be added here
 
   unsigned long currentMillis = millis();
 
@@ -110,40 +138,131 @@ void PrintData(BLOCK block)
   fetch_data(client);
 
   display_status(status_bar);
-  display_current(current_block);
+  display_top(current_block, today, "Tod:");
+  display_top(tomorrow_block, tomorrow, "Tom:");
+  display_bottom(block_3h, hr3);
+  display_bottom(block_6h, hr6);
+  display_bottom(block_9h, hr9);
+  display_bottom(block_12h, hr12);
 
-  //String display_text = String("Current Temperature is: ") + weather_data.temp;
-
-  //Part_Text_Display(display_text.c_str(), block.startX, block.startY, fontSize, BLACK, block.endX, block.endY);
-  //display_icon(0, 150, 0);
+  // draw the boxes 
+  EPD_DrawLine(1, 12, 400, 12, BLACK); // top horizontal line
+  EPD_DrawLine(1, 150, 400, 150, BLACK); // middle horizontal line
+  EPD_DrawLine(200, 12, 200, 300, BLACK); // middle vertical line
+  EPD_DrawLine(100, 150, 100, 300, BLACK); // bottom Q1
+  EPD_DrawLine(300, 150, 300, 300, BLACK); // bottom Q3
 
   EPD_Display_Fast(Image_BW); // Quickly display the image stored in the Image_BW array
 }
 
 void display_status(BLOCK block) {
   int fontSize = 12;
-  String status_text = String("Last updated: ") + weather_data.time;
+  String status_text = String("Last updated: ") + today.time;
   Part_Text_Display(status_text.c_str(), block.startX, block.startY, fontSize, BLACK, block.endX, block.endY);
 }
 
-void display_current(BLOCK block) {
+void display_top(BLOCK block, W_DATA weather_data, char* heading) {
   int startX = block.startX;
   int startY = block.startY;
   int endX = block.endX;
   int endY = block.endY;
-  int fontSize = 32;
-  Part_Text_Display("Now:", startX, startY, fontSize, BLACK, endX, (startY+fontSize));
-  // startY += fontSize; // move down past current text
-  fontSize = 48;
+  int font1 = 32;
+  int font2 = 48;
+  int indent = 5;
+  int icon_offset = 70;
+
+  //  Part_Text_Display(STRING, startX, startY, fontSize, color, endX, endY); 
+  Part_Text_Display(heading, startX+indent, startY, font1, BLACK, endX, (startY+font1));  
+
   
-  char current_temp[3];
-  itoa(weather_data.temp, current_temp, 10);
-  //= weather_data.temp;
-  Serial.println(current_temp);
-  Part_Text_Display(current_temp, startX, (startY+32), fontSize, BLACK, endX, endY);
-  //String forecast_today = weather_data.high + "/" + weather_data.low;
-  //Part_Text_Display(forecast_today.c_str(), block.endX-50, block.startY, font, BLACK, block.endX, block.endY);
-  display_icon((startX+75), startY, weather_data.icon_now);
+  char current_temp[4]; // maximum 3 characters + null term
+  int temp = weather_data.temp;
+  int err = snprintf(current_temp, 4, "%02d", temp);
+  if (err>= 0 && err<100){
+    if (temp < 100 && temp >= 0){
+      Part_Text_Display(current_temp, (startX+indent), (startY+font1), font2, BLACK, endX, endY);
+    }
+    else { // if the temp is 3 digits. if the temp is 4 digits, we have bigger problems.
+      Part_Text_Display(current_temp, (startX), (startY+font1), font2, BLACK, endX, endY);
+      icon_offset = 74;
+    }
+  }
+
+  char feels_temp[6]; // maximum 3 characters + null term + 2 parens
+  int f_temp = weather_data.feelsLike;
+  err = snprintf(feels_temp, 6, "(%02d)", f_temp);
+  if (err>= 0 && err<100){
+    if (f_temp < 100 && f_temp >= 0){
+      Part_Text_Display(feels_temp, (startX), (startY+font1+font2), font1, BLACK, endX, endY);
+    }
+    else {
+      Part_Text_Display(feels_temp, (startX), (startY+font1+font2), font2, BLACK, endX, endY);
+      icon_offset = 74;
+    }
+  }
+
+  char UV[10]; 
+  float uv = weather_data.UV;
+  err = snprintf(UV, 10, " UV: %.1f", uv);
+  if (err>= 0 && err<100) {
+      Part_Text_Display(UV, (startX), (startY+font1+font2+font1), 16, BLACK, endX, endY);
+  }
+
+  char high_low[10];
+  err = snprintf (high_low, 10, "%d/%d", weather_data.high, weather_data.low);
+  if (err>=0 && err<100){
+    Part_Text_Display(high_low, (startX+icon_offset+(font1/2)), (startY+icon_width), font1, BLACK, endX, endY);
+  }
+
+  char high_low_feel[10];
+  err = snprintf(high_low_feel, 10, "(%d/%d)", weather_data.feel_high, weather_data.feel_low);
+  if (err>=0 && err<100){
+    Part_Text_Display(high_low_feel, (startX+icon_offset), (startY+icon_width+font1), font1, BLACK, endX, endY);
+  }
+
+  // display icon
+  display_icon((startX+icon_offset), startY, weather_data.icon);
+
+  // precipitation 
+  char chance_rain[5];
+  if (weather_data.chance_precip == 100) {
+    weather_data.chance_precip = 99;
+  }
+  err = snprintf(chance_rain, 5, "%02d%%", weather_data.chance_precip);
+  if (err>=0 && err<100){
+    Part_Text_Display(chance_rain, (startX + icon_offset + icon_width + 5), (startY), font1, BLACK, endX, endY);
+  }
+  char hours_precip[4];
+  err = snprintf(hours_precip, 4, "%02dh", weather_data.hours_precip);
+  if (err>=0 && err<100){
+    Part_Text_Display(hours_precip, (startX + icon_offset + icon_width + 5), (startY + font1), font1, BLACK, endX, endY);
+  }
+}
+
+void display_bottom(BLOCK block, W_DATA weather_data){
+  int font1 = 16;
+  int font2 = 24;
+  int time_indent = 5;
+  int temp_indent = 14;
+  int rain_indent = 35;
+  display_icon((block.startX+14), block.startY, weather_data.icon);
+
+  Part_Text_Display(weather_data.time.c_str(), (block.startX+time_indent), (block.startY+icon_width), font1, BLACK, block.endX, block.endY);
+
+  char temps[10];
+  int err = snprintf(temps, 10,  "%d(%d)", weather_data.temp, weather_data.feelsLike);
+  if (err>=0 && err<100) {
+    Part_Text_Display(temps, (block.startX+temp_indent), (block.startY + icon_width + font1), font2, BLACK, block.endX, block.endY);
+  }
+
+  char rain[5];
+  if (weather_data.chance_precip == 100) {
+    weather_data.chance_precip = 99;
+  }
+  err = snprintf(rain, 5,  "%02d%%", weather_data.chance_precip);
+  if (err>=0 && err<100) {
+    Part_Text_Display(rain, (block.startX+rain_indent), (block.startY + icon_width + font1 + font2), font2, BLACK, block.endX, block.endY);
+  }
 }
 
 void display_icon(int x, int y, int code) {
@@ -151,12 +270,12 @@ void display_icon(int x, int y, int code) {
   const unsigned char* icon;
 
   if (code >= 0 && code <=2) {
-    if (weather_data.is_day == 1) {
+    if (today.is_day == 1) {
         if (code == 0) { icon = i_sunny; }
         if (code == 1) { icon = i_mostly_clear_day; }
         if (code == 2) { icon = i_partly_cloudy_day; }
     }
-    if (weather_data.is_day == 0) { 
+    if (today.is_day == 0) { 
       if (code == 0) { icon = i_moon; }
       if (code == 1) { icon = i_mostly_clear_night; }
       if (code == 2) { icon = i_partly_cloudy_night; }
@@ -174,7 +293,7 @@ void display_icon(int x, int y, int code) {
     icon = i_unknown;
   }
 
-  EPD_ShowPicture(x, y, 88, 88, icon, WHITE);
+  EPD_ShowPicture(x, y, icon_width, icon_width, icon, WHITE);
 
 }
 
