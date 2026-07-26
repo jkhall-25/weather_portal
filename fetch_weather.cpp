@@ -3,7 +3,6 @@
 #include <StreamUtils.h>
 #include <math.h>
 #include "fetch_weather.h"
-#include "owm_credentials.h"
 #include "connect_wifi.h"
 
 bool DEBUG = true;
