@@ -1,19 +1,16 @@
 #include <HTTPClient.h>
-#include <Arduino.h>
-#include <WiFiClient.h>
-#include <WiFi.h>
 #include <ArduinoJson.h>
 #include <StreamUtils.h>
 #include <math.h>
 #include "fetch_weather.h"
 #include "owm_credentials.h"
+#include "connect_wifi.h"
 
 bool DEBUG = true;
 const int DATA_LEN = 4096;
 
 void fetch_data(WiFiClient& client);
 bool parse_data(JsonDocument json);
-void connect_wifi();
 unsigned char* fetch_icon(WiFiClient& client, String code);
 
 char bytes[DATA_LEN];
@@ -152,6 +149,3 @@ bool parse_data(JsonDocument payload) {
   return true;
 }
 
-void connect_wifi(){
-  WiFi.begin(ssid, password);
-}

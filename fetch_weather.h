@@ -1,5 +1,8 @@
-#ifndef fetch_weather_h_
-#define fetch_weather_h_
+#ifndef _fetch_weather_h_
+#define _fetch_weather_h_
+
+#include "connect_wifi.h"
+#include <WiFiClient.h>
 
 struct W_DATA {
   String time;
@@ -18,7 +21,6 @@ struct W_DATA {
 
 void fetch_data(WiFiClient& client);
 bool parse_data(JsonDocument json);
-void connect_wifi();
 unsigned char* fetch_icon(WiFiClient& client, String code);
 
 

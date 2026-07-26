@@ -2,16 +2,22 @@
 #include "EPD.h"            // Include the EPD library to control the E-Paper Display
 #include "EPD_GUI.h"        // Include the EPD_GUI library which provides GUI functionalities
 #include "esp_sleep.h"
-#include <ArduinoJson.h>    // https://github.com/bblanchon/ArduinoJson
-#include <WiFi.h>           //built in
-#include "time.h"           //built in
-#include <SPI.h>            //built in
+#include <WiFi.h>           //built in  
 #include <WiFiClient.h>
+#include <ArduinoJson.h>    // https://github.com/bblanchon/ArduinoJson
+#include <time.h>           //built in
+#include <SPI.h>            //built in
 #include <GxEPD2_BW.h>
-#include <U8g2_for_Adafruit_GFX.h>
+#include <U8g2_for_Adafruit_GFX.h>    
+#include "connect_wifi.h" 
 #include "epaper_fonts.h"
 #include "fetch_weather.h"
 #include "icons.h"
+
+class connect_wifi;
+
+#define power_display_pin 7
+#define MENU 2
 
 #define FULL_REFRESH_INTERVAL 80000000 // 24 hours
 #define REFRESH_DATA_INTERVAL 750000 // 15 minutes
@@ -19,12 +25,8 @@
 unsigned long lastFullRefresh = 0; // vairable to save the last executed time for code block 1
 unsigned long lastAPICall = 0; // vairable to save the last executed time for code block 2
 
-int status = WL_IDLE_STATUS;
-
 uint8_t Image_BW[15000];    // Declare an array of 15000 bytes to store black and white image data
-
 int fontSize = 24; // Default font size
-
 int icon_width = 72;
 
 WiFiClient client;
@@ -68,28 +70,18 @@ struct W_DATA hr12;
 
 void setup() {
   // Initialization settings, executed only once when the program starts
-  // Configure pin 7 as output mode and set it to high level to activate the screen power
-  pinMode(7, OUTPUT);            // Set pin 7 as output mode
-  digitalWrite(7, HIGH);         // Set pin 7 to high level, activating the screen power
-  Serial.begin(115200);
+
+  PowerDisplay();
+
+  pinMode(MENU, INPUT);
+  Serial.begin(115200);          // Set baud rate to 115200
   Serial.println("Booting up...");
 
   EPD_GPIOInit();                // Initialize the GPIO pin configuration for the EPD e-ink screen
 
-  // The SPI initialization part is commented out
-  // default baud is 115200
-  // SPI.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
-  // SPI.begin ();
-  connect_wifi();
-
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-
-  Serial.println("Connected to WiFi.");
-
   clear_all();
+
+  connect_wifi();
 
   PrintData(fullscreen);
   
@@ -99,10 +91,18 @@ void setup() {
 
 void loop() {
 
+  maintain_wifi();
+
   unsigned long currentMillis = millis();
 
+  int menu_button_released = digitalRead(MENU);
+  if (!menu_button_released){
+    Serial.println("MENU");
+    connect_wifi();
+  }
+
   //if it's been longer than a day since the last full screen refresh, refresh the screen
-  if (currentMillis - lastFullRefresh >= FULL_REFRESH_INTERVAL) {
+  if (currentMillis - lastFullRefresh >= FULL_REFRESH_INTERVAL || !menu_button_released) {
     lastFullRefresh = currentMillis; // save the last executed time
     Serial.println("Full Refresh");
     EPD_Init();
@@ -121,6 +121,12 @@ void loop() {
     EPD_Sleep();
   }
 
+}
+
+void PowerDisplay(){
+  // Configure pin 7 as output mode and set it to high level to activate the screen power
+  pinMode(7, OUTPUT);            // Set pin 7 as output mode
+  digitalWrite(7, HIGH);         // Set pin 7 to high level, activating the screen power
 }
 
 void PrintData(BLOCK block)
@@ -159,6 +165,10 @@ void display_status(BLOCK block) {
   int fontSize = 12;
   String status_text = String("Last updated: ") + today.time;
   Part_Text_Display(status_text.c_str(), block.startX, block.startY, fontSize, BLACK, block.endX, block.endY);
+  String wifi_stat;
+  wifi_stat = wifi_status();
+                                          // right-aligned 
+  Part_Text_Display(wifi_stat.c_str(), (block.endX - (wifi_stat.length()*(fontSize/2)) ), block.startY, fontSize, BLACK, block.endX, block.endY);
 }
 
 void display_top(BLOCK block, W_DATA weather_data, char* heading) {
