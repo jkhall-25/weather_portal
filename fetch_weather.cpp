@@ -8,9 +8,18 @@
 bool DEBUG = true;
 const int DATA_LEN = 4096;
 
+const char server[] = "api.open-meteo.com";
+const char ip_server[] = "api.ipify.org";
+const char loc_server[] = "ip-api.com";
+
+String LAT;
+String LON;
+
 void fetch_data(WiFiClient& client);
 bool parse_data(JsonDocument json);
 unsigned char* fetch_icon(WiFiClient& client, String code);
+void locate(WiFiClient& client);
+void query(WiFiClient& client, char q_data[], const char server[], String uri);
 
 char bytes[DATA_LEN];
 
@@ -34,25 +43,7 @@ precipitation,rain,snowfall,showers,weather_code,is_day&minutely_15=is_day,rain,
 relative_humidity_2m,apparent_temperature,precipitation,weather_code&timezone=America%2FNew_York&past_days=0&forecast_days=3\
 &wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch&forecast_minutely_15=4&forecast_hours=15&temporal_resolution=hourly_3";
 
-  client.connect(server, 80);
-  Serial.println(server);
-  if (!client.connected()){
-    Serial.println("Connection failed.");
-  }
-  LoggingStream loggingClient(client, Serial);
-  loggingClient.print("GET "+uri+" HTTP/1.0\r\n" +
-                      "Host: "+String(server)+"\r\n" +
-                      "Connection: close\r\n" +
-                      "\r\n"
-                      );
-  while (client.connected() || client.available()) {
-    if (client.available()) {
-      client.readBytesUntil('\n', bytes, DATA_LEN);
-    }
-  }
-
-  client.stop();
-  Serial.println("disconnected");
+  query(client, bytes, server, uri);
 
   JsonDocument data;
   DeserializationError error = deserializeJson(data, bytes);
@@ -146,5 +137,67 @@ bool parse_data(JsonDocument payload) {
   tomorrow.UV = daily["uv_index_max"][1];
   
   return true;
+}
+
+void locate(WiFiClient& client){
+  Serial.println("Locating...");
+
+  char ip_bytes[24];
+  char loc_bytes[1024];
+
+  String ip_uri = "/?format=json";
+  query(client, ip_bytes, ip_server, ip_uri);
+
+  JsonDocument ip_obj;
+  DeserializationError ip_error = deserializeJson(ip_obj, ip_bytes);
+  if (ip_error) {
+    Serial.print("deserialization failed: ");
+    Serial.println(ip_error.c_str());
+  }
+
+  JsonVariant ip_addr = ip_obj.as<JsonVariant>()["ip"];
+  String ip = String(ip_addr);
+
+
+  String loc_uri = "/json/"+ip+"?fields=status,message,city,lat,lon,query";
+  query(client, loc_bytes, loc_server, loc_uri);
+
+  JsonDocument loc_obj;
+  DeserializationError loc_error = deserializeJson(loc_obj, loc_bytes);
+  if (loc_error) {
+    Serial.print("deserialization failed: ");
+    Serial.println(loc_error.c_str());
+  }
+
+  JsonVariant loc = loc_obj.as<JsonVariant>();
+  JsonVariant lat = loc["lat"];
+  JsonVariant lon = loc["lon"];
+
+  LAT = String(lat);
+  LON = String(lon);
+
+}
+
+void query(NetworkClient& client, char q_data[], const char server[], String uri){
+  client.connect(server, 80);
+  Serial.println(server);
+  if (!client.connected()){
+    Serial.println("Connection to "+String(server)+" failed.");
+  }
+  LoggingStream loggingClient(client, Serial);
+  loggingClient.print("GET "+uri+" HTTP/1.0\r\n" +
+                      "Host: "+String(server)+"\r\n" +
+                      "Connection: close\r\n" +
+                      "\r\n"
+                      );
+  while (client.connected() || client.available()) {
+    if (client.available()) {
+      client.readBytesUntil('\n', q_data, DATA_LEN);
+    }
+  }
+
+  client.stop();
+  Serial.println(q_data);
+  Serial.println("disconnected from "+String(server));
 }
 

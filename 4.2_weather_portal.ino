@@ -1,13 +1,11 @@
 #include <Arduino.h>        // Include the core library for Arduino platform development
 #include "EPD.h"            // Include the EPD library to control the E-Paper Display
 #include "EPD_GUI.h"        // Include the EPD_GUI library which provides GUI functionalities
-#include "esp_sleep.h"
 #include <WiFi.h>           //built in  
 #include <WiFiClient.h>
 #include <ArduinoJson.h>    // https://github.com/bblanchon/ArduinoJson
 #include <time.h>           //built in
 #include <SPI.h>            //built in
-#include <GxEPD2_BW.h>
 #include <U8g2_for_Adafruit_GFX.h>    
 #include "connect_wifi.h" 
 #include "epaper_fonts.h"
@@ -82,6 +80,8 @@ void setup() {
   clear_all();
 
   connect_wifi();
+
+  locate(client);
 
   PrintData(fullscreen);
   

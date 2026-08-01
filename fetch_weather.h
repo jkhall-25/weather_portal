@@ -22,6 +22,8 @@ struct W_DATA {
 void fetch_data(WiFiClient& client);
 bool parse_data(JsonDocument json);
 unsigned char* fetch_icon(WiFiClient& client, String code);
+void locate(WiFiClient& client);
+void query(WiFiClient& client, char q_data[], const char server[], String uri);
 
 
 #endif
